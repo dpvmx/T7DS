@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		73540D482F3C4888002399E0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 73540D472F3C4888002399E0 /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		73540D352F3BFAB6002399E0 /* T7DS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = T7DS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		73540D472F3C4888002399E0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +39,7 @@
 			children = (
 				73540D372F3BFAB6002399E0 /* T7DS */,
 				73540D362F3BFAB6002399E0 /* Products */,
+				73540D472F3C4888002399E0 /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				73540D482F3C4888002399E0 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
