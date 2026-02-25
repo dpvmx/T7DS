@@ -13,19 +13,20 @@ Color quantization algorithms simulating the 1-bit and 8-bit era aesthetics.
 * **Bayer Dither:** Classic ordered matrix with selectable patterns (2x, 4x, 8x, 16x).
 * **Blue Noise:** Stochastic dithering for organic, noise-based distribution.
 * **Error Diffusion:** Simulation of Floyd-Steinberg/Atkinson-style algorithms.
-* **WebSafe Mode:** Optional quantization to the standard 216-color web palette.
+* **ANSI 256 Colors:** Optional quantization to the classic terminal color space.
 
-### 2. ASCII Engine (New)
+### 2. ASCII Engine
 Real-time text conversion using GPU-accelerated texture atlases.
 * **Custom Character Ramp:** Type any string to generate the shading pattern instantly.
-* **Braille Mode:** One-click preset for high-density Braille art.
-* **Proportional Grid:** Calculates exact cell sizes to prevent edge clipping.
+* **Typographic Control:** Choose from classic monospaced fonts (Menlo, Monaco, Courier, etc.).
+* **Retro Presets:** One-click menus for ANSI Block Art, Retro Glyphs, Braille, and Binary patterns.
+* **Proportional Grid & Scaling:** Calculates exact cell sizes to prevent edge clipping, with adjustable glyph spacing.
 
 ### 3. CRT Emulation (Cathode Ray Tube)
 Physical simulation of tube monitors.
 * **Geometry Warping:** Spherical screen curvature.
 * **Beam Scanning:** Progressive scanlines and Shadow Mask.
-* **Signal Processing:** Analog signal blur and chromatic aberration.
+* **Signal Processing:** Analog RF signal blur and chromatic aberration.
 * **Phosphor Glow:** Light reactive bloom for high-luminance areas.
 
 ### 4. Halftone Engine
@@ -33,6 +34,12 @@ Simulation of editorial printing processes.
 * **CMYK Simulation:** Channel separation.
 * **Misprint Control:** Offset plate simulation for registration errors.
 * **Adaptive Dot Gain:** Dynamic dot size adjustment based on luminance.
+
+### 5. Pro Export Workflow
+Built for modern macOS environments with a focus on pixel perfection.
+* **Nearest-Neighbor Scaling:** Export up to 8x resolution without anti-aliasing blur to preserve hard pixel edges.
+* **Drag & Drop:** Instantly drag the processed image directly from the canvas to your desktop.
+* **Sandbox-Safe:** Uses native SwiftUI `.fileExporter` for secure, crash-free file saving.
 
 ---
 
@@ -42,30 +49,33 @@ Simulation of editorial printing processes.
 * **UI Framework:** SwiftUI (macOS Target)
 * **Graphics API:** Metal (MTLComputePipelineState)
 * **Architecture:**
-    * `ContentView.swift`: Reactive state management and UI controls.
-    * `Renderer.swift`: CPU-GPU bridge and dynamic Texture Atlas generation.
+    * `ContentView.swift`: Reactive state management, UI controls, and secure exporting.
+    * `Renderer.swift`: CPU-GPU bridge, dynamic Texture Atlas generation, and CIContext scaling.
     * `Shaders.metal`: Parallel compute kernels for pixel manipulation.
 
 ---
 
 ## 🎛 Controls & Parameters
 
-### Universal
-* **Double-Click Reset:** Tap any value label twice to reset it to default.
+### Universal Controls
+* **Double-Click Reset:** Tap any parameter title twice to reset it to its default value.
+* **Precise Input:** All numeric values are editable text fields—type your exact value and hit Enter.
 * **Resolution (Columns):** Defines the density of the grid (pixels, dots, or characters) proportionally to the image width.
 
 ### Dither Engine
 * **Spread:** Dither matrix intensity.
-* **Palette:** Color depth reduction.
-* **WebSafe Colors:** Force 90s web standard colors.
+* **Palette Steps:** Color depth reduction (quantized).
+* **ANSI 256 Colors:** Force classic terminal colors.
 
 ### ASCII Engine
-* **Character Field:** Live-editable text ramp.
+* **Font Selector:** Choose your preferred monospaced typography.
+* **Glyph Scale:** Adjust the spacing/padding between individual characters.
 * **Grayscale/Color:** Toggle between classic terminal look or colored text.
 
 ### CRT Engine
 * **Scale:** Phosphor mask size.
 * **Intensity:** Scanline visibility.
+* **Blur:** RF signal noise/softness.
 * **Glow:** Bloom intensity.
 * **Warp:** Screen curvature.
 
@@ -82,6 +92,7 @@ Simulation of editorial printing processes.
 3.  Ensure the target is set to **My Mac**.
 4.  Run (Cmd + R).
 5.  **Drag and drop** any image file (PNG, JPG, WEBP) onto the window to process it.
+6.  Select an **Export Scale** and click **Export Image**, or simply drag the artwork to your desktop.
 
 ---
 

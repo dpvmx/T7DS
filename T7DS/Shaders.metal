@@ -2,7 +2,10 @@
 using namespace metal;
 
 struct Uniforms {
-    float mode;             // 0:Bayer, 1:CRT, 2:Blue, 3:Diff, 4:Half, 5:ASCII
+    float4 colorDark;
+    float4 colorLight;
+    float2 resolution;
+    float mode;
     float isGrayscale;
     float brightness;
     float contrast;
@@ -10,10 +13,8 @@ struct Uniforms {
     float hue;
     float spread;
     int matrixSize;
-    float bayerScale;       // Column count / Density
+    float bayerScale;
     float paletteSize;
-    float4 colorDark;
-    float4 colorLight;
     float crtWarp;
     float crtScanline;
     float crtVignette;
@@ -23,16 +24,14 @@ struct Uniforms {
     float crtGlowSpread;
     float halftoneMisprint;
     float asciiCharCount;
-    float2 resolution;
-    float isWebSafe;
+    float isAnsiColors;
+    float asciiSpacing;
 };
 
-// --- CONSTANTES GLOBALES (Deben estar fuera para evitar el error de address space) ---
+// --- CONSTANTES GLOBALES ---
 constant float bayer2[2][2] = { {0.0/4.0, 2.0/4.0}, {3.0/4.0, 1.0/4.0} };
 constant float bayer4[4][4] = { { 0.0/16.0, 8.0/16.0, 2.0/16.0, 10.0/16.0 }, {12.0/16.0, 4.0/16.0, 14.0/16.0, 6.0/16.0 }, { 3.0/16.0, 11.0/16.0, 1.0/16.0, 9.0/16.0 }, {15.0/16.0, 7.0/16.0, 13.0/16.0, 5.0/16.0 } };
 constant float bayer8[8][8] = { { 0.0/64.0, 32.0/64.0, 8.0/64.0, 40.0/64.0, 2.0/64.0, 34.0/64.0, 10.0/64.0, 42.0/64.0}, {48.0/64.0, 16.0/64.0, 56.0/64.0, 24.0/64.0, 50.0/64.0, 18.0/64.0, 58.0/64.0, 26.0/64.0}, {12.0/64.0, 44.0/64.0, 4.0/64.0, 36.0/64.0, 14.0/64.0, 46.0/64.0,  6.0/64.0, 38.0/64.0}, {60.0/64.0, 28.0/64.0, 52.0/64.0, 20.0/64.0, 62.0/64.0, 30.0/64.0, 54.0/64.0, 22.0/64.0}, { 3.0/64.0, 35.0/64.0, 11.0/64.0, 43.0/64.0,  1.0/64.0, 33.0/64.0,  9.0/64.0, 41.0/64.0}, {51.0/64.0, 19.0/64.0, 59.0/64.0, 27.0/64.0, 49.0/64.0, 17.0/64.0, 57.0/64.0, 25.0/64.0}, {15.0/64.0, 47.0/64.0,  7.0/64.0, 39.0/64.0, 13.0/64.0, 45.0/64.0,  5.0/64.0, 37.0/64.0}, {63.0/64.0, 31.0/64.0, 55.0/64.0, 23.0/64.0, 61.0/64.0, 29.0/64.0, 53.0/64.0, 21.0/64.0} };
-
-// --- FUNCIONES AUXILIARES ---
 
 float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453123); }
 
@@ -49,7 +48,8 @@ float3 adjustColor(float3 rgb, constant Uniforms &uniforms) {
     rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
     rgb = rgb + uniforms.brightness;
     rgb = clamp(rgb, 0.0, 1.0);
-    if (uniforms.isWebSafe > 0.5) rgb = floor(rgb * 5.0 + 0.5) / 5.0;
+    
+    if (uniforms.isAnsiColors > 0.5) rgb = floor(rgb * 5.0 + 0.5) / 5.0;
     return rgb;
 }
 
@@ -101,25 +101,34 @@ kernel void bayerDither(texture2d<float, access::sample> inputTexture [[texture(
     float2 uv = float2(gid) / float2(w, h);
     constexpr sampler s(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
     float2 res = float2(w, h);
-    float3 outColor; // Variable de salida
+    float3 outColor;
 
-    // Grid proporcional
     float columns = max(5.0, uniforms.bayerScale);
     float cellW = w / columns;
     float2 cellSize = float2(cellW, cellW);
     float2 blockCoord = floor(float2(gid) / cellSize) * cellSize;
-    float2 samplePos = blockCoord + cellSize * 0.5; // Centro del bloque
+    float2 samplePos = blockCoord + cellSize * 0.5;
     
-    if (uniforms.mode > 4.5) { // ASCII
+    if (uniforms.mode > 4.5) {
         float3 rgb = adjustColor(inputTexture.read(uint2(samplePos)).rgb, uniforms);
         float gray = dot(rgb, float3(0.299, 0.587, 0.114));
         float charIdx = floor(gray * (uniforms.asciiCharCount - 0.01));
+        
         float2 localUV = fract(float2(gid) / cellSize);
-        float2 atlasUV = float2((charIdx + localUV.x) / uniforms.asciiCharCount, localUV.y);
-        float mask = asciiAtlas.sample(s, atlasUV).r;
+        
+        localUV -= 0.5;
+        localUV /= uniforms.asciiSpacing;
+        localUV += 0.5;
+        
+        float mask = 0.0;
+        if (localUV.x >= 0.0 && localUV.x <= 1.0 && localUV.y >= 0.0 && localUV.y <= 1.0) {
+            float2 atlasUV = float2((charIdx + localUV.x) / uniforms.asciiCharCount, 1.0 - localUV.y);
+            mask = asciiAtlas.sample(s, atlasUV).r;
+        }
+        
         outColor = (uniforms.isGrayscale > 0.5) ? mix(uniforms.colorDark.rgb, uniforms.colorLight.rgb, mask) : rgb * mask;
     }
-    else if (uniforms.mode > 3.5) { // HALFTONE
+    else if (uniforms.mode > 3.5) {
         float3 rgb = adjustColor(sampleHQ(inputTexture, s, uv, res, cellW * 0.5), uniforms);
         if (uniforms.isGrayscale > 0.5) {
             float pat = halftone(uv, dot(rgb, float3(0.299, 0.587, 0.114)), columns, res, uniforms.spread);
@@ -131,17 +140,27 @@ kernel void bayerDither(texture2d<float, access::sample> inputTexture [[texture(
                               halftone(uv + float2(mis,mis), rgb.b, columns, res, uniforms.spread));
         }
     }
-    else if (uniforms.mode > 0.5 && uniforms.mode < 1.5) { // CRT
+    else if (uniforms.mode > 0.5 && uniforms.mode < 1.5) {
+        // --- CRT ---
         float2 wuv = warpUV(uv, uniforms.crtWarp);
         float ab = 0.003 * uniforms.crtWarp;
         float3 signal = adjustColor(float3(inputTexture.sample(s, wuv + float2(ab, 0)).r, inputTexture.sample(s, wuv).g, inputTexture.sample(s, wuv - float2(ab, 0)).b), uniforms);
-        float3 mask = float3(0.5 + 0.5 * cos((wuv.x * w) * (2.0 * M_PI_F / (3.0*uniforms.crtScale)) + float3(0, 2.1, 4.2)));
-        mask *= mix(1.0, 0.5 + 0.5 * sin((wuv.y * h) * (2.0 * M_PI_F / (6.0*uniforms.crtScale))), uniforms.crtScanline);
+        
+        // RECUPERADO: El cálculo de ruido para desenfocar/vibrar la máscara de fósforo
+        float blurNoise = hash(uv) * uniforms.crtBlur * 10.0;
+
+        float slotW = 3.0 * uniforms.crtScale;
+        float slotH = 6.0 * uniforms.crtScale;
+        
+        // Sumamos el blurNoise a la fase del patrón para ensuciarlo
+        float3 mask = float3(0.5 + 0.5 * cos((wuv.x * w + blurNoise) * (2.0 * M_PI_F / slotW) + float3(0, 2.1, 4.2)));
+        mask *= mix(1.0, 0.5 + 0.5 * sin((wuv.y * h + blurNoise) * (2.0 * M_PI_F / slotH)), uniforms.crtScanline);
+        
         float3 glow = pow(max(float3(0.0), sampleHQ(inputTexture, s, wuv, res, uniforms.crtGlowSpread * 15.0) - 0.1), 2.0) * uniforms.crtGlowIntensity * 5.0;
         outColor = (signal * mask * 1.8) + glow;
         outColor *= 1.0 - (dot(abs(uv-0.5), abs(uv-0.5)) * uniforms.crtVignette * 1.5);
     }
-    else { // DIGITAL
+    else {
         float3 rgb = adjustColor(inputTexture.read(uint2(samplePos)).rgb, uniforms);
         int sx = int(floor(float(gid.x) / cellW));
         int sy = int(floor(float(gid.y) / cellW));
